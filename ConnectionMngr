@@ -1,0 +1,88 @@
+package edu.mqttdev.concurrency;
+
+
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttSecurityException;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+
+
+
+public class ConnectionMngr {
+
+	//amqp
+	private final static String RABBIT_USER = "password";
+
+
+	///mqtt
+	private static MqttClient client;
+	
+
+	/*******************************************************************
+	 * 	@param BROKERMQ 	Broker's IP address 
+	 * 	@param heartBeat	HeartBeat value in seconds
+	 * 	@param is_publisher	(TRUE)=Publisher or  (FALSE)=Subscriber
+	 * 
+	 * ******************************************************************/
+	 
+	
+	protected static MqttClient openMQTTconnection(String BROKERMQ, int heartBeat, boolean pub) {
+	
+		client=null;
+		
+		//OBTAIN AN ID
+		String clientId = MqttClient.generateClientId();
+		if (clientId.length() > 23)
+			clientId = clientId.substring(0, 22);
+					
+		//a. Create an instance of MQTT client
+		try {
+											// 	the 3th parameter is persistence
+											//	(BROKERMQ, clientId, null);
+			client = new MqttClient(BROKERMQ, clientId, new MemoryPersistence());
+		} catch (MqttException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		 
+		if (!client.isConnected()){
+
+			try {
+				System.out.println("Connecting to " + BROKERMQ + " with client ID: " + clientId);
+				
+				//b. Prepare connection options
+				MqttConnectOptions conOptions = new MqttConnectOptions();
+
+				conOptions.setUserName(RABBIT_USER);
+				conOptions.setPassword(RABBIT_USER.toCharArray());
+//				conOptions.setConnectionTimeout(60*10);			//specified in seconds
+				conOptions.setKeepAliveInterval(heartBeat);		//specified in seconds
+	        
+				conOptions.setCleanSession(false);
+				
+				//c. Connect to broker with the connection options
+				try {
+					client.connect(conOptions);
+					
+				} catch (MqttSecurityException e1) {
+					e1.printStackTrace();
+					client=null;
+				} catch (MqttException e1) {
+					System.out.println("ATTENTION: The broker is unreacheable...");
+					client=null;
+					//e1.printStackTrace();
+					//System.exit(1);		//terminar el programa
+				}
+			} catch (Exception e2) {
+				System.out.println("ConnectionAttempFailed");
+				client=null;
+			}
+			
+		} else {
+			System.out.println("Connected");
+		}
+		return client;
+	}
+	
+}
